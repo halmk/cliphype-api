@@ -1,0 +1,9 @@
+{
+  "name": "cliplist-ttv",
+  "description": "web app for easy to find twitch clip",
+  "keywords": [
+    "go"
+  ],
+  "website": "http://example.com",
+  "repository": "http://github.com/halmk/cliplist-ttv"
+}
