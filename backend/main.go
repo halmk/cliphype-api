@@ -67,9 +67,7 @@ func setupRouter() *gin.Engine {
 	{
 		api.GET("/twitch", func(c *gin.Context) {
 			raw_query := c.Request.URL.RawQuery
-			fmt.Println(raw_query)
 			query_arr := strings.Split(raw_query, "&")
-			fmt.Println(query_arr)
 			params := make(map[string]string)
 			url := ""
 
@@ -86,7 +84,7 @@ func setupRouter() *gin.Engine {
 			fmt.Println(url, params)
 			twitch := twitch_api.NewTwitchAPI()
 			response := twitch.GetRequest(url, params)
-			c.JSON(http.StatusOK, gin.H{"message": "OK", "url": url, "params": params, "response": response})
+			c.JSON(http.StatusOK, gin.H{"response": response})
 		})
 	}
 
