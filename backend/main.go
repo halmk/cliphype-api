@@ -1,11 +1,13 @@
 package main
 
 import (
+	"backend/twitch_api"
 	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -63,13 +65,29 @@ func setupRouter() *gin.Engine {
 
 	api := r.Group("/api")
 	{
-		twitch := api.Group("/twitch")
-		{
-			twitch.GET("/:params", func(c *gin.Context) {
-				url := c.Request.URL.Path + "?" + c.Request.URL.RawQuery
-				c.JSON(http.StatusOK, gin.H{"message": "OK", "url": url})
-			})
-		}
+		api.GET("/twitch", func(c *gin.Context) {
+			raw_query := c.Request.URL.RawQuery
+			fmt.Println(raw_query)
+			query_arr := strings.Split(raw_query, "&")
+			fmt.Println(query_arr)
+			params := make(map[string]string)
+			url := ""
+
+			for _, param := range query_arr {
+				tStr := strings.Split(param, "=")
+				key := tStr[0]
+				value := tStr[1]
+				if key == "url" {
+					url = value
+				} else {
+					params[key] = value
+				}
+			}
+			fmt.Println(url, params)
+			twitch := twitch_api.NewTwitchAPI()
+			response := twitch.GetRequest(url, params)
+			c.JSON(http.StatusOK, gin.H{"message": "OK", "url": url, "params": params, "response": response})
+		})
 	}
 
 	return r

@@ -1,2 +1,4 @@
-.vender
-.bin
+vender/
+bin/
+*.txt
+
