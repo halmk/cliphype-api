@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/heroku/x/hmetrics/onload"
 	_ "github.com/lib/pq"
@@ -52,6 +54,27 @@ func dbFunc(db *sql.DB) gin.HandlerFunc {
 func setupRouter() *gin.Engine {
 	r := gin.Default()
 
+	r.Use(cors.New(cors.Config{
+		AllowOrigins: []string{
+			"http://localhost:3000",
+		},
+		AllowMethods: []string{
+			"POST",
+			"GET",
+			"OPTIONS",
+		},
+		AllowHeaders: []string{
+			"Access-Control-Allow-Credentials",
+			"Access-Control-Allow-Headers",
+			"Content-Type",
+			"Content-Length",
+			"Accept-Encoding",
+			"Authorization",
+		},
+		AllowCredentials: true,
+		MaxAge:           24 * time.Hour,
+	}))
+
 	// Ping test
 	r.GET("/ping", func(c *gin.Context) {
 		c.String(http.StatusOK, "pong")
@@ -68,23 +91,30 @@ func setupRouter() *gin.Engine {
 		api.GET("/twitch", func(c *gin.Context) {
 			raw_query := c.Request.URL.RawQuery
 			query_arr := strings.Split(raw_query, "&")
+			fmt.Println(query_arr)
 			params := make(map[string]string)
-			url := ""
+			api_url := ""
 
 			for _, param := range query_arr {
 				tStr := strings.Split(param, "=")
 				key := tStr[0]
 				value := tStr[1]
 				if key == "url" {
-					url = value
+					parsed_url, err := url.QueryUnescape(value)
+					if err != nil {
+						fmt.Println(err)
+					}
+					api_url = parsed_url
 				} else {
-					params[key] = value
+					if len(value) != 0 {
+						params[key] = value
+					}
 				}
 			}
-			fmt.Println(url, params)
+			fmt.Println(api_url, params)
 			twitch := twitch_api.NewTwitchAPI()
-			response := twitch.GetRequest(url, params)
-			c.JSON(http.StatusOK, gin.H{"response": response})
+			response, status_code := twitch.GetRequest(api_url, params)
+			c.JSON(status_code, gin.H{"response": response})
 		})
 	}
 
@@ -93,9 +123,17 @@ func setupRouter() *gin.Engine {
 
 func main() {
 	port := os.Getenv("PORT")
+	twitch_client_id := os.Getenv("TWITCH_CLIENT_ID")
+	twitch_client_secret := os.Getenv("TWITCH_CLIENT_SECRET")
 
 	if port == "" {
 		log.Fatal("$PORT must be set")
+	}
+	if twitch_client_id == "" {
+		log.Fatal("$TWITCH_CLIENT_ID must be set")
+	}
+	if twitch_client_secret == "" {
+		log.Fatal("$TWITCH_CLIENT_SECRET must be set")
 	}
 
 	r := setupRouter()

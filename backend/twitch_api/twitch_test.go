@@ -15,6 +15,6 @@ func TestGetUsersA(t *testing.T) {
 	url := "https://api.twitch.tv/helix/users"
 	params := make(map[string]string)
 	params["id"] = "141981764"
-	response := twitch.GetRequest(url, params)
-	fmt.Println(response)
+	response, status_code := twitch.GetRequest(url, params)
+	fmt.Println(response, status_code)
 }
