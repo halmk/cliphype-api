@@ -57,6 +57,7 @@ func setupRouter() *gin.Engine {
 	r.Use(cors.New(cors.Config{
 		AllowOrigins: []string{
 			"http://localhost:3000",
+			"https://cliphype.netlify.app",
 		},
 		AllowMethods: []string{
 			"POST",
