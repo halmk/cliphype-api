@@ -1,5 +1,6 @@
 vender/
 bin/
+.env
 *.txt
 .env
 

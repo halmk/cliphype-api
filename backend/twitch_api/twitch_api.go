@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 )
@@ -52,7 +53,7 @@ func (twitch *TwitchAPI) GetToken() {
 	twitch.WriteTokenFile()
 }
 
-func (twitch *TwitchAPI) GetRequest(url string, params map[string]string) string {
+func (twitch *TwitchAPI) GetRequest(url string, params map[string]string) (map[string]interface{}, int) {
 	twitch.count++
 	url += "?"
 	for k, v := range params {
@@ -65,20 +66,28 @@ func (twitch *TwitchAPI) GetRequest(url string, params map[string]string) string
 	)
 	req.Header.Add("Authorization", "Bearer "+twitch.token)
 	req.Header.Add("Client-ID", twitch.client_id)
+	fmt.Println(req)
 
 	client := new(http.Client)
-	resp, _ := client.Do(req)
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer resp.Body.Close()
 
-	if twitch.count < 2 && resp.StatusCode != 200 {
-		twitch.GetToken()
-		return twitch.GetRequest(url, params)
+	if resp.StatusCode != 200 {
+		if twitch.count < 2 {
+			twitch.GetToken()
+			return twitch.GetRequest(url, params)
+		} else {
+			return make(map[string]interface{}), resp.StatusCode
+		}
 	} else {
 		byteArray, _ := ioutil.ReadAll(resp.Body)
 		var mapBody map[string]interface{}
 		json.Unmarshal(byteArray, &mapBody)
 		fmt.Println(mapBody)
-		return string(byteArray)
+		return mapBody, resp.StatusCode
 	}
 }
 
