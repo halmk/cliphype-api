@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -62,13 +63,17 @@ func TwitchLogin(c *gin.Context) {
 	}
 	session.Set("oauth2_state", state)
 	session.Save()
-	c.Redirect(http.StatusTemporaryRedirect, redirect_url)
+	c.Redirect(http.StatusFound, redirect_url)
 }
 
 func TwitchLoginCallback(c *gin.Context) {
 	session := sessions.Default(c)
 
 	code := c.Query("code")
+	if code == "" {
+		c.String(http.StatusBadRequest, "auth code doesn't exist")
+		return
+	}
 	state := c.Query("state")
 	cookie_state := session.Get("oauth2_state")
 	if cookie_state == "" {
@@ -106,12 +111,15 @@ func TwitchLoginCallback(c *gin.Context) {
 	session.Set("loginUserEmail", email)
 	session.Save()
 
-	c.Redirect(http.StatusTemporaryRedirect, os.Getenv("BASE_URL"))
+	log.Printf("User[%s] successful logged in", email)
+	c.Redirect(http.StatusFound, os.Getenv("LOGIN_REDIRECT_URL"))
 }
 
 func TwitchLogout(c *gin.Context) {
 	session := sessions.Default(c)
+	email := session.Get("loginUserEmail")
 	session.Clear()
 	session.Save()
-	c.String(http.StatusOK, "logged out")
+	log.Printf("User[%s] logged out", email)
+	c.Redirect(http.StatusFound, os.Getenv("LOGOUT_REDIRECT_URL"))
 }
