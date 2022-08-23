@@ -163,7 +163,7 @@ func AuthConfig() *oauth2.Config {
 		ClientID:     os.Getenv("TWITCH_CLIENT_ID"),
 		ClientSecret: os.Getenv("TWITCH_CLIENT_SECRET"),
 		Scopes:       []string{"user:read:email"},
-		RedirectURL:  os.Getenv("BASE_URL") + "/accounts/twitch/login/callback",
+		RedirectURL:  os.Getenv("BASE_URL") + "/accounts/twitch/login/callback/",
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  "https://id.twitch.tv/oauth2/authorize",
 			TokenURL: "https://id.twitch.tv/oauth2/token",
@@ -204,6 +204,7 @@ func AccessToken(code string) (*oauth2.Token, error) {
 	// Client will refresh the token as necessary.
 	tok, err := conf.Exchange(ctx, code)
 	if err != nil {
+		log.Println(code, tok, conf)
 		log.Fatal(err)
 		return nil, err
 	}
