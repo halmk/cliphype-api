@@ -1,41 +1,53 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"strings"
 
+	"github.com/halmk/cliplist-ttv/backend/db"
 	"github.com/halmk/cliplist-ttv/backend/server"
 	_ "github.com/heroku/x/hmetrics/onload"
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	CheckEnv()
+	CheckEnvs()
+
+	db.Init()
+	defer db.Close()
+
 	port := os.Getenv("PORT")
 	r := server.SetupRouter()
 	r.Run(":" + port)
 }
 
-func CheckEnv() {
-	port := os.Getenv("PORT")
-	twitch_client_id := os.Getenv("TWITCH_CLIENT_ID")
-	twitch_client_secret := os.Getenv("TWITCH_CLIENT_SECRET")
-	app_origin := os.Getenv("APP_ORIGIN")
-	base_url := os.Getenv("BASE_URL")
+func CheckEnvs() {
+	envs := [...]string{
+		"PORT",
+		"TWITCH_CLIENT_ID",
+		"TWITCH_CLIENT_SECRET",
+		"APP_ORIGIN",
+		"BASE_URL",
+		"LOGIN_REDIRECT_URL",
+		"LOGOUT_REDIRECT_URL",
+		"SESSION_SECRET",
+		"DB_HOST",
+		"DB_NAME",
+		"DB_USER",
+		"DB_PASSWORD",
+		"DB_PORT",
+	}
 
-	if port == "" {
-		log.Fatal("$PORT must be set")
+	for _, env := range envs {
+		CheckEnv(env)
 	}
-	if twitch_client_id == "" {
-		log.Fatal("$TWITCH_CLIENT_ID must be set")
-	}
-	if twitch_client_secret == "" {
-		log.Fatal("$TWITCH_CLIENT_SECRET must be set")
-	}
-	if app_origin == "" {
-		log.Fatal("$APP_ORIGIN must be set")
-	}
-	if base_url == "" {
-		log.Fatal("$BASE_URL must be set")
+}
+
+func CheckEnv(env string) {
+	val := os.Getenv(env)
+	if val == "" {
+		log.Fatal(fmt.Sprintf("$%s must be set", strings.ToUpper(env)))
 	}
 }
