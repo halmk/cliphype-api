@@ -54,11 +54,11 @@ func SetupRouter() *gin.Engine {
 	// Accounts
 	accounts := r.Group("/accounts")
 	{
+		accounts.GET("/logout", handler.Logout)
 		twitch := accounts.Group("/twitch")
 		{
 			twitch.GET("/login", handler.TwitchLogin)
 			twitch.GET("/login/callback", handler.TwitchLoginCallback)
-			twitch.GET("/logout", handler.TwitchLogout)
 		}
 	}
 
