@@ -52,7 +52,7 @@ func TwitchLogin(c *gin.Context) {
 	session := sessions.Default(c)
 	email, ok := session.Get("loginUserEmail").(string)
 	if ok && email != "" {
-		c.String(http.StatusBadRequest, "already logged-in")
+		c.Redirect(http.StatusFound, os.Getenv("LOGIN_REDIRECT_URL"))
 		return
 	}
 
