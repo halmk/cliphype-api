@@ -61,8 +61,7 @@ func TwitchLogin(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "cannot get redirect url")
 		return
 	}
-	session.Set("oauth2_state", state)
-	session.Save()
+	c.SetCookie("oauth2_state", state, 3600, "/", os.Getenv("APP_DOMAIN"), true, true)
 	c.Redirect(http.StatusFound, redirect_url)
 }
 
@@ -75,8 +74,8 @@ func TwitchLoginCallback(c *gin.Context) {
 		return
 	}
 	state := c.Query("state")
-	cookie_state := session.Get("oauth2_state")
-	if cookie_state == "" {
+	cookie_state, err := c.Cookie("oauth2_state")
+	if cookie_state == "" || err != nil {
 		c.String(http.StatusBadRequest, "oauth2 state doesn't exist")
 		return
 	}
@@ -115,10 +114,11 @@ func TwitchLoginCallback(c *gin.Context) {
 	c.Redirect(http.StatusFound, os.Getenv("LOGIN_REDIRECT_URL"))
 }
 
-func TwitchLogout(c *gin.Context) {
+func Logout(c *gin.Context) {
 	session := sessions.Default(c)
 	email := session.Get("loginUserEmail")
 	session.Clear()
+	session.Options(sessions.Options{Path: "/", MaxAge: -1})
 	session.Save()
 	log.Printf("User[%s] logged out", email)
 	c.Redirect(http.StatusFound, os.Getenv("LOGOUT_REDIRECT_URL"))
