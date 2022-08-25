@@ -50,8 +50,11 @@ func TwitchAPIRequest(c *gin.Context) {
 
 func TwitchLogin(c *gin.Context) {
 	session := sessions.Default(c)
+	c.SetSameSite(http.SameSiteNoneMode)
+
 	email, ok := session.Get("loginUserEmail").(string)
 	if ok && email != "" {
+		log.Printf("User[%s] already logged in", email)
 		c.Redirect(http.StatusFound, os.Getenv("LOGIN_REDIRECT_URL"))
 		return
 	}
@@ -108,6 +111,14 @@ func TwitchLoginCallback(c *gin.Context) {
 
 	email := info["email"].(string)
 	session.Set("loginUserEmail", email)
+	session.Options(sessions.Options{
+		Path:     "/",
+		Domain:   os.Getenv("APP_DOMAIN"),
+		MaxAge:   60 * 60 * 24 * 30,
+		SameSite: http.SameSiteNoneMode,
+		Secure:   true,
+		HttpOnly: false,
+	})
 	session.Save()
 
 	log.Printf("User[%s] successful logged in", email)
@@ -116,7 +127,7 @@ func TwitchLoginCallback(c *gin.Context) {
 
 func Logout(c *gin.Context) {
 	session := sessions.Default(c)
-	email := session.Get("loginUserEmail")
+	email, _ := session.Get("loginUserEmail").(string)
 	session.Clear()
 	session.Options(sessions.Options{Path: "/", MaxAge: -1})
 	session.Save()
