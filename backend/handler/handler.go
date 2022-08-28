@@ -10,6 +10,9 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/halmk/cliplist-ttv/backend/service/socialaccount"
+	"github.com/halmk/cliplist-ttv/backend/service/socialtoken"
+	"github.com/halmk/cliplist-ttv/backend/service/user"
 	"github.com/halmk/cliplist-ttv/backend/utils/twitch"
 	_ "github.com/heroku/x/hmetrics/onload"
 	_ "github.com/lib/pq"
@@ -19,14 +22,61 @@ func Ping(c *gin.Context) {
 	c.String(http.StatusOK, "pong")
 }
 
-func TwitchAPIRequest(c *gin.Context) {
+func TwitchAPIAppRequest(c *gin.Context) {
 	raw_query := c.Request.URL.RawQuery
-	query_arr := strings.Split(raw_query, "&")
-	fmt.Println(query_arr)
+	query := strings.Split(raw_query, "&")
+	fmt.Println(query)
+	req_url := MakeRequestURL(query)
+
+	twitch := twitch.NewTwitchAppClient()
+	response, status_code := twitch.GetRequest(req_url)
+	c.JSON(status_code, gin.H{"response": response})
+}
+
+func TwitchAPIUserRequest(c *gin.Context) {
+	session := sessions.Default(c)
+	email, ok := session.Get("loginUserEmail").(string)
+	if !ok {
+		log.Println("Error(session.Get()): ", session.Get("loginUserEmail"))
+		c.String(http.StatusInternalServerError, "could not get email from cookie")
+		return
+	}
+
+	raw_query := c.Request.URL.RawQuery
+	query := strings.Split(raw_query, "?")
+	fmt.Println(query)
+	req_url := MakeRequestURL(query)
+
+	user_record, err := user.GetByEmail(email)
+	if err != nil {
+		log.Println("Error(user.GetByEmail()): ", email)
+		c.String(http.StatusInternalServerError, "could not get user by email")
+		return
+	}
+	socialaccount_record, err := socialaccount.GetByUserId(user_record.ID)
+	if err != nil {
+		log.Println("Error(socialaccount.GetByUserId()): ", user_record.ID)
+		c.String(http.StatusInternalServerError, "could not get socialaccount by user id")
+		return
+	}
+	socialtoken_record, err := socialtoken.GetBySocialaccountId(socialaccount_record.ID)
+	if err != nil {
+		log.Println("Error(socialtoken.GetBySocialaccountId()): ", socialaccount_record.ID)
+		c.String(http.StatusInternalServerError, "could not get socialtoken by socialaccount id")
+		return
+	}
+	access_token := socialtoken_record.AccessToken
+
+	twitch := twitch.NewTwitchUserClient(access_token)
+	response, status_code := twitch.GetRequest(req_url)
+	c.JSON(status_code, gin.H{"response": response})
+}
+
+func MakeRequestURL(query []string) string {
 	params := make(map[string]string)
 	api_url := ""
 
-	for _, param := range query_arr {
+	for _, param := range query {
 		tStr := strings.Split(param, "=")
 		key := tStr[0]
 		value := tStr[1]
@@ -42,10 +92,18 @@ func TwitchAPIRequest(c *gin.Context) {
 			}
 		}
 	}
-	fmt.Println(api_url, params)
-	twitch := twitch.NewTwitchAppClient()
-	response, status_code := twitch.GetRequest(api_url, params)
-	c.JSON(status_code, gin.H{"response": response})
+
+	req_url := api_url + "?"
+	first := true
+	for key, val := range params {
+		if !first {
+			req_url += "&"
+		} else {
+			first = false
+		}
+		req_url += key + "=" + val
+	}
+	return req_url
 }
 
 func TwitchLogin(c *gin.Context) {
@@ -95,8 +153,8 @@ func TwitchLoginCallback(c *gin.Context) {
 	}
 
 	// Get user infomation
-	twitch_client := twitch.NewTwitchClient(tok)
-	info, status_code := twitch_client.GetUser()
+	twitch_client := twitch.NewTwitchUserClient(tok.AccessToken)
+	info, status_code := twitch_client.GetRequest("https://api.twitch.tv/helix/users")
 	if status_code != 200 {
 		c.String(http.StatusInternalServerError, "twitch request failed")
 		return
@@ -109,7 +167,11 @@ func TwitchLoginCallback(c *gin.Context) {
 		return
 	}
 
-	email := info["email"].(string)
+	email, ok := info["email"].(string)
+	if !ok {
+		c.String(http.StatusInternalServerError, "cannot get email")
+		return
+	}
 	session.Set("loginUserEmail", email)
 	session.Options(sessions.Options{
 		Path:     "/",

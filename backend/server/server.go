@@ -48,7 +48,11 @@ func SetupRouter() *gin.Engine {
 	api := r.Group("/api")
 	{
 		// Proxy Twitch API Request
-		api.GET("/twitch", handler.TwitchAPIRequest)
+		twitch := api.Group("/twitch")
+		{
+			twitch.GET("/app", handler.TwitchAPIAppRequest)
+			twitch.GET("/user", handler.TwitchAPIUserRequest)
+		}
 	}
 
 	// Accounts

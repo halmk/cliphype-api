@@ -26,11 +26,10 @@ type TwitchAppClient struct {
 	count         int
 }
 
-type TwitchClient struct {
-	client http.Client
-	conf   oauth2.Config
-	token  oauth2.Token
-	count  int
+type TwitchUserClient struct {
+	client_id string
+	token     string
+	count     int
 }
 
 func NewTwitchAppClient() TwitchAppClient {
@@ -50,10 +49,14 @@ func NewTwitchAppClient() TwitchAppClient {
 	return twitch
 }
 
-func NewTwitchClient(token *oauth2.Token) *TwitchClient {
-	client := NewClient(context.Background(), token)
-	tc := TwitchClient{*client, *AuthConfig(), *token, 0}
-	return &tc
+func NewTwitchUserClient(token string) TwitchUserClient {
+	client_id := os.Getenv("TWITCH_CLIENT_ID")
+	twitch := TwitchUserClient{
+		client_id,
+		token,
+		0,
+	}
+	return twitch
 }
 
 func (twitch *TwitchAppClient) GetToken() {
@@ -65,23 +68,25 @@ func (twitch *TwitchAppClient) GetToken() {
 		nil,
 	)
 	client := new(http.Client)
-	resp, _ := client.Do(req)
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		log.Fatal(resp.Status)
+	}
 
 	byteArray, _ := ioutil.ReadAll(resp.Body)
 	var mapBody map[string]interface{}
 	json.Unmarshal(byteArray, &mapBody)
-	fmt.Println(mapBody)
 	twitch.token = mapBody["access_token"].(string)
 	twitch.WriteTokenFile()
 }
 
-func (twitch *TwitchAppClient) GetRequest(url string, params map[string]string) (map[string]interface{}, int) {
+func (twitch *TwitchAppClient) GetRequest(url string) (map[string]interface{}, int) {
 	twitch.count++
-	url += "?"
-	for k, v := range params {
-		url += k + "=" + v + "&"
-	}
 	req, _ := http.NewRequest(
 		"GET",
 		url,
@@ -89,7 +94,7 @@ func (twitch *TwitchAppClient) GetRequest(url string, params map[string]string) 
 	)
 	req.Header.Add("Authorization", "Bearer "+twitch.token)
 	req.Header.Add("Client-ID", twitch.client_id)
-	fmt.Println(req)
+	log.Println(req.URL)
 
 	client := new(http.Client)
 	resp, err := client.Do(req)
@@ -99,9 +104,10 @@ func (twitch *TwitchAppClient) GetRequest(url string, params map[string]string) 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
+		log.Println(resp.Status)
 		if twitch.count < 2 {
 			twitch.GetToken()
-			return twitch.GetRequest(url, params)
+			return twitch.GetRequest(url)
 		} else {
 			return make(map[string]interface{}), resp.StatusCode
 		}
@@ -109,7 +115,6 @@ func (twitch *TwitchAppClient) GetRequest(url string, params map[string]string) 
 		byteArray, _ := ioutil.ReadAll(resp.Body)
 		var mapBody map[string]interface{}
 		json.Unmarshal(byteArray, &mapBody)
-		fmt.Println(mapBody)
 		return mapBody, resp.StatusCode
 	}
 }
@@ -125,30 +130,31 @@ func (twitch *TwitchAppClient) ReadTokenFile() error {
 }
 
 func (twitch *TwitchAppClient) WriteTokenFile() error {
-	err := ioutil.WriteFile("twitch_app_token.txt", []byte(twitch.token), 0606)
+	err := ioutil.WriteFile("twitch_app_token.txt", []byte(twitch.token), 0666)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (tc *TwitchClient) GetUser() (map[string]interface{}, int) {
-	url := "https://api.twitch.tv/helix/users"
+func (tc *TwitchUserClient) GetRequest(url string) (map[string]interface{}, int) {
 	req, _ := http.NewRequest(
 		"GET",
 		url,
 		nil,
 	)
-	req.Header.Add("Authorization", "Bearer "+tc.token.AccessToken)
-	req.Header.Add("Client-ID", tc.conf.ClientID)
+	req.Header.Add("Authorization", "Bearer "+tc.token)
+	req.Header.Add("Client-ID", tc.client_id)
 
-	resp, err := tc.client.Do(req)
+	client := new(http.Client)
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
+		log.Println(resp.Status, req.Header, req.URL)
 		return make(map[string]interface{}), resp.StatusCode
 	} else {
 		byteArray, _ := ioutil.ReadAll(resp.Body)
@@ -209,11 +215,6 @@ func AccessToken(code string) (*oauth2.Token, error) {
 		return nil, err
 	}
 	return tok, nil
-}
-
-func NewClient(ctx context.Context, token *oauth2.Token) *http.Client {
-	conf := AuthConfig()
-	return conf.Client(ctx, token)
 }
 
 func UpdateTokenInfo(info map[string]interface{}, token *oauth2.Token) error {
