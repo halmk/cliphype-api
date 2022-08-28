@@ -122,7 +122,7 @@ func TwitchLogin(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "cannot get redirect url")
 		return
 	}
-	c.SetCookie("oauth2_state", state, 3600, "/", os.Getenv("API_DOMAIN"), true, true)
+	c.SetCookie("oauth2_state", state, 3600, "/", os.Getenv("API_DOMAIN"), true, false)
 	c.Redirect(http.StatusFound, redirect_url)
 }
 
