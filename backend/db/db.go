@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/halmk/cliplist-ttv/backend/entity"
@@ -16,11 +15,8 @@ var (
 
 // Init is initialize db from main function
 func Init() {
-	db_options := fmt.Sprintf(
-		"host=%s port=%s user=%s dbname=%s password=%s sslmode=disable",
-		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"), os.Getenv("DB_NAME"), os.Getenv("DB_PASSWORD"),
-	)
-	db, err = gorm.Open("postgres", db_options)
+	db_url := os.Getenv("DATABASE_URL")
+	db, err = gorm.Open("postgres", db_url)
 	if err != nil {
 		panic(err)
 	}

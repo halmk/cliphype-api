@@ -34,11 +34,7 @@ func CheckEnvs() {
 		"LOGIN_REDIRECT_URL",
 		"LOGOUT_REDIRECT_URL",
 		"SESSION_SECRET",
-		"DB_HOST",
-		"DB_NAME",
-		"DB_USER",
-		"DB_PASSWORD",
-		"DB_PORT",
+		"DATABASE_URL",
 	}
 
 	for _, env := range envs {
