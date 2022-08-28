@@ -175,7 +175,7 @@ func TwitchLoginCallback(c *gin.Context) {
 	session.Set("loginUserEmail", email)
 	session.Options(sessions.Options{
 		Path:     "/",
-		Domain:   os.Getenv("APP_DOMAIN"),
+		Domain:   os.Getenv("API_DOMAIN"),
 		MaxAge:   60 * 60 * 24 * 30,
 		SameSite: http.SameSiteNoneMode,
 		Secure:   true,
