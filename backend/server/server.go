@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/halmk/cliplist-ttv/backend/handler"
 	_ "github.com/heroku/x/hmetrics/onload"
@@ -36,10 +34,6 @@ func SetupRouter() *gin.Engine {
 		AllowCredentials: true,
 		MaxAge:           24 * time.Hour,
 	}))
-
-	session_secret := os.Getenv("SESSION_SECRET")
-	store := cookie.NewStore([]byte(session_secret))
-	r.Use(sessions.Sessions("session", store))
 
 	// Ping test
 	r.GET("/ping", handler.Ping)
