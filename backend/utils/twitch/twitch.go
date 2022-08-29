@@ -219,12 +219,12 @@ func AccessToken(code string) (*oauth2.Token, error) {
 
 func UpdateTokenInfo(info map[string]interface{}, token *oauth2.Token) error {
 	db := db.GetDB()
-	email := info["email"].(string)
+	username := info["login"].(string)
 	var u entity.User
 	var sa entity.Socialaccount
 	var st entity.Socialtoken
 
-	if err := db.Where("email = ?", email).First(&u).Error; err != nil {
+	if err := db.Where("name = ?", username).First(&u).Error; err != nil {
 		u, err = CreateUser(info)
 		if err != nil {
 			return err
