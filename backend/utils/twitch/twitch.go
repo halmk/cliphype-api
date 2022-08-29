@@ -169,7 +169,7 @@ func AuthConfig() *oauth2.Config {
 		ClientID:     os.Getenv("TWITCH_CLIENT_ID"),
 		ClientSecret: os.Getenv("TWITCH_CLIENT_SECRET"),
 		Scopes:       []string{"user:read:email"},
-		RedirectURL:  os.Getenv("BASE_URL") + "/accounts/twitch/login/callback/",
+		RedirectURL:  os.Getenv("APP_BASE_URL") + "/account/twitch/login/callback/",
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  "https://id.twitch.tv/oauth2/authorize",
 			TokenURL: "https://id.twitch.tv/oauth2/token",
