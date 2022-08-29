@@ -7,9 +7,10 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 	"github.com/halmk/cliplist-ttv/backend/service/socialaccount"
 	"github.com/halmk/cliplist-ttv/backend/service/socialtoken"
 	"github.com/halmk/cliplist-ttv/backend/service/user"
@@ -34,22 +35,28 @@ func TwitchAPIAppRequest(c *gin.Context) {
 }
 
 func TwitchAPIUserRequest(c *gin.Context) {
-	session := sessions.Default(c)
-	email, ok := session.Get("loginUserEmail").(string)
+	bearer_token := c.Request.Header["Authorization"][0]
+	token_string := strings.Split(bearer_token, " ")[1]
+	token, ok := verifyJWT(token_string)
 	if !ok {
-		log.Println("Error(session.Get()): ", session.Get("loginUserEmail"))
-		c.String(http.StatusInternalServerError, "could not get email from cookie")
+		c.String(http.StatusBadRequest, "invalid token")
 		return
 	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		c.String(http.StatusBadRequest, "invalid token claims")
+		return
+	}
+	username := claims["username"].(string)
 
 	raw_query := c.Request.URL.RawQuery
 	query := strings.Split(raw_query, "?")
 	fmt.Println(query)
 	req_url := MakeRequestURL(query)
 
-	user_record, err := user.GetByEmail(email)
+	user_record, err := user.GetByUsername(username)
 	if err != nil {
-		log.Println("Error(user.GetByEmail()): ", email)
+		log.Println("Error(user.GetByUsername()): ", username)
 		c.String(http.StatusInternalServerError, "could not get user by email")
 		return
 	}
@@ -107,16 +114,6 @@ func MakeRequestURL(query []string) string {
 }
 
 func TwitchLogin(c *gin.Context) {
-	session := sessions.Default(c)
-	c.SetSameSite(http.SameSiteNoneMode)
-
-	email, ok := session.Get("loginUserEmail").(string)
-	if ok && email != "" {
-		log.Printf("User[%s] already logged in", email)
-		c.Redirect(http.StatusFound, os.Getenv("LOGIN_REDIRECT_URL"))
-		return
-	}
-
 	redirect_url, state, err := twitch.RedirectURL()
 	if err != nil {
 		c.String(http.StatusInternalServerError, "cannot get redirect url")
@@ -127,8 +124,6 @@ func TwitchLogin(c *gin.Context) {
 }
 
 func TwitchLoginCallback(c *gin.Context) {
-	session := sessions.Default(c)
-
 	code := c.Query("code")
 	if code == "" {
 		c.String(http.StatusBadRequest, "auth code doesn't exist")
@@ -172,27 +167,55 @@ func TwitchLoginCallback(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "cannot get email")
 		return
 	}
-	session.Set("loginUserEmail", email)
-	session.Options(sessions.Options{
-		Path:     "/",
-		Domain:   os.Getenv("API_DOMAIN"),
-		MaxAge:   60 * 60 * 24 * 30,
-		SameSite: http.SameSiteNoneMode,
-		Secure:   true,
-		HttpOnly: false,
-	})
-	session.Save()
+	username, ok := info["login"].(string)
+	if !ok {
+		c.String(http.StatusInternalServerError, "cannot get username")
+		return
+	}
 
-	log.Printf("User[%s] successful logged in", email)
-	c.Redirect(http.StatusFound, os.Getenv("LOGIN_REDIRECT_URL"))
+	expires := time.Now().Add(time.Hour * 24 * 30)
+	claims := jwt.MapClaims{
+		"username": username,
+		"exp":      expires.Unix(),
+	}
+
+	// Generate JWT
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, _ := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+
+	log.Printf("User[%s(%s)] successful logged in", username, email)
+	c.JSON(http.StatusOK, gin.H{
+		"token":   tokenString,
+		"expires": expires,
+	})
+}
+
+func verifyJWT(tokenString string) (*jwt.Token, bool) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil || !token.Valid {
+		log.Println(token, err)
+		return nil, false
+	}
+	return token, true
 }
 
 func Logout(c *gin.Context) {
-	session := sessions.Default(c)
-	email, _ := session.Get("loginUserEmail").(string)
-	session.Clear()
-	session.Options(sessions.Options{Path: "/", MaxAge: -1})
-	session.Save()
-	log.Printf("User[%s] logged out", email)
-	c.Redirect(http.StatusFound, os.Getenv("LOGOUT_REDIRECT_URL"))
+	bearer_token := c.Request.Header["Authorization"][0]
+	token_string := strings.Split(bearer_token, " ")[1]
+
+	token, ok := verifyJWT(token_string)
+	if !ok {
+		log.Println("invalid token detected")
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	username := claims["username"].(string)
+
+	log.Printf("User[%s] logged out", username)
+	c.String(http.StatusOK, "logged out")
 }
