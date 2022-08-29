@@ -16,3 +16,13 @@ func GetByEmail(email string) (User, error) {
 
 	return u, nil
 }
+
+func GetByUsername(username string) (User, error) {
+	db := db.GetDB()
+	var u User
+	if err := db.Where("name = ?", username).First(&u).Error; err != nil {
+		return u, err
+	}
+
+	return u, nil
+}
