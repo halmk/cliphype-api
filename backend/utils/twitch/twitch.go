@@ -156,6 +156,7 @@ func (tc *TwitchUserClient) GetRequest(url string) (map[string]interface{}, int)
 	if resp.StatusCode != 200 {
 		log.Println(resp.Status, req.Header, req.URL)
 		return make(map[string]interface{}), resp.StatusCode
+		}
 	} else {
 		byteArray, _ := ioutil.ReadAll(resp.Body)
 		var mapBody map[string]interface{}
@@ -218,122 +219,45 @@ func AccessToken(code string) (*oauth2.Token, error) {
 }
 
 func UpdateTokenInfo(info map[string]interface{}, token *oauth2.Token) error {
-	db := db.GetDB()
 	username := info["login"].(string)
-	var u entity.User
-	var sa entity.Socialaccount
-	var st entity.Socialtoken
+	email := info["email"].(string)
 
-	if err := db.Where("name = ?", username).First(&u).Error; err != nil {
-		u, err = CreateUser(info)
+	u, err := user.GetByUsername(username)
+	if err != nil {
+		u, err = user.Create(username, email)
 		if err != nil {
 			return err
 		}
 	}
 
-	var p entity.Provider
 	name := "Twitch"
-	if err := db.Where("name = ?", name).First(&p).Error; err != nil {
-		p, err = CreateProvider()
+	p, err := provider.GetByName(name)
+	if err != nil {
+		p, err = provider.Create(name)
 		if err != nil {
 			return err
 		}
 	}
 
-	if err := db.Where("user_id = ?", u.ID).First(&sa).Error; err != nil {
-		sa, err = CreateSocialaccount(u, info)
+	sa, err := socialaccount.GetByUserId(u.ID)
+	if err != nil {
+		sa, err = socialaccount.Create(u, p, info)
 		if err != nil {
 			return err
 		}
 	}
 
-	if err := db.Where("socialaccount_id = ?", sa.ID).First(&st).Error; err != nil {
-		st, err = CreateSocialtoken(sa, token)
+	st, err := socialtoken.GetBySocialaccountId(sa.ID)
+	if err != nil {
+		st, err = socialtoken.Create(sa, p, token)
 		if err != nil {
 			return err
 		}
 	}
-
 	st.AccessToken = token.AccessToken
 	st.RefreshToken = token.RefreshToken
 	st.Expiry = token.Expiry
-
-	db.Save(&st)
+	db.GetDB().Save(&st)
 
 	return nil
-}
-
-func CreateUser(info map[string]interface{}) (entity.User, error) {
-	// Create User
-	db := db.GetDB()
-	var u entity.User
-	{
-		u.Name = info["login"].(string)
-		u.Email = info["email"].(string)
-		u.IsActive = false
-		u.IsStaff = false
-		u.IsSuperuser = false
-	}
-	if err := db.Create(&u).Error; err != nil {
-		return u, err
-	}
-
-	return u, nil
-}
-
-func CreateSocialaccount(user entity.User, info map[string]interface{}) (entity.Socialaccount, error) {
-	db := db.GetDB()
-	var sa entity.Socialaccount
-	var p entity.Provider
-	name := "Twitch"
-	if err := db.Where("name = ?", name).First(&p).Error; err != nil {
-		return sa, err
-	}
-	{
-		sa.User = user
-		sa.Provider = p
-		info_bytes, err := json.Marshal(info)
-		if err != nil {
-			return sa, err
-		}
-		sa.ExtraData = postgres.Jsonb{RawMessage: info_bytes}
-	}
-	if err := db.Create(&sa).Error; err != nil {
-		return sa, err
-	}
-
-	return sa, nil
-}
-
-func CreateSocialtoken(sa entity.Socialaccount, token *oauth2.Token) (entity.Socialtoken, error) {
-	db := db.GetDB()
-	var st entity.Socialtoken
-	var p entity.Provider
-	name := "Twitch"
-	if err := db.Where("name = ?", name).First(&p).Error; err != nil {
-		return st, err
-	}
-	{
-		st.Provider = p
-		st.Socialaccount = sa
-		st.AccessToken = token.AccessToken
-		st.RefreshToken = token.RefreshToken
-		st.Expiry = token.Expiry
-	}
-	if err := db.Create(&st).Error; err != nil {
-		return st, err
-	}
-
-	return st, nil
-}
-
-func CreateProvider() (entity.Provider, error) {
-	db := db.GetDB()
-	var p entity.Provider
-	p.Name = "Twitch"
-	if err := db.Create(&p).Error; err != nil {
-		return p, err
-	}
-
-	return p, nil
 }
