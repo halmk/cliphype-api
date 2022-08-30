@@ -25,9 +25,9 @@ func Ping(c *gin.Context) {
 
 func TwitchAPIAppRequest(c *gin.Context) {
 	raw_query := c.Request.URL.RawQuery
-	query := strings.Split(raw_query, "&")
-	fmt.Println(query)
-	req_url := MakeRequestURL(query)
+	query, _ := url.QueryUnescape(raw_query)
+	log.Println("Query app requested:", query)
+	req_url := MakeRequestURL(raw_query)
 
 	twitch := twitch.NewTwitchAppClient()
 	response, status_code := twitch.GetRequest(req_url)
@@ -50,10 +50,11 @@ func TwitchAPIUserRequest(c *gin.Context) {
 	username := claims["username"].(string)
 
 	raw_query := c.Request.URL.RawQuery
-	query := strings.Split(raw_query, "?")
-	fmt.Println(query)
-	req_url := MakeRequestURL(query)
+	query, _ := url.QueryUnescape(raw_query)
+	log.Println("Query user requested:", query)
+	req_url := MakeRequestURL(raw_query)
 
+	// Get user's access token
 	user_record, err := user.GetByUsername(username)
 	if err != nil {
 		log.Println("Error(user.GetByUsername()): ", username)
@@ -79,11 +80,12 @@ func TwitchAPIUserRequest(c *gin.Context) {
 	c.JSON(status_code, gin.H{"response": response})
 }
 
-func MakeRequestURL(query []string) string {
-	params := make(map[string]string)
+func MakeRequestURL(query string) string {
+	param_map := make(map[string]string)
 	api_url := ""
 
-	for _, param := range query {
+	params := strings.Split(query, "&")
+	for _, param := range params {
 		tStr := strings.Split(param, "=")
 		key := tStr[0]
 		value := tStr[1]
@@ -95,14 +97,14 @@ func MakeRequestURL(query []string) string {
 			api_url = parsed_url
 		} else {
 			if len(value) != 0 {
-				params[key] = value
+				param_map[key] = value
 			}
 		}
 	}
 
 	req_url := api_url + "?"
 	first := true
-	for key, val := range params {
+	for key, val := range param_map {
 		if !first {
 			req_url += "&"
 		} else {
