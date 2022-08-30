@@ -74,8 +74,9 @@ func TwitchAPIUserRequest(c *gin.Context) {
 		return
 	}
 	access_token := socialtoken_record.AccessToken
+	refresh_token := socialtoken_record.RefreshToken
 
-	twitch := twitch.NewTwitchUserClient(access_token)
+	twitch := twitch.NewTwitchUserClient(username, access_token, refresh_token)
 	response, status_code := twitch.GetRequest(req_url)
 	c.JSON(status_code, gin.H{"response": response})
 }
@@ -151,7 +152,7 @@ func TwitchLoginCallback(c *gin.Context) {
 	}
 
 	// Get user infomation
-	twitch_client := twitch.NewTwitchUserClient(tok.AccessToken)
+	twitch_client := twitch.NewTwitchUserClient("", tok.AccessToken, tok.RefreshToken)
 	info, status_code := twitch_client.GetRequest("https://api.twitch.tv/helix/users")
 	if status_code != 200 {
 		c.String(http.StatusInternalServerError, "twitch request failed")
