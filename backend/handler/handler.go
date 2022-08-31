@@ -82,7 +82,7 @@ func TwitchAPIUserRequest(c *gin.Context) {
 }
 
 func MakeRequestURL(query string) string {
-	param_map := make(map[string]string)
+	param_map := make(map[string][]string)
 	api_url := ""
 
 	params := strings.Split(query, "&")
@@ -98,20 +98,22 @@ func MakeRequestURL(query string) string {
 			api_url = parsed_url
 		} else {
 			if len(value) != 0 {
-				param_map[key] = value
+				param_map[key] = append(param_map[key], value)
 			}
 		}
 	}
 
 	req_url := api_url + "?"
 	first := true
-	for key, val := range param_map {
-		if !first {
-			req_url += "&"
-		} else {
-			first = false
+	for key, vals := range param_map {
+		for _, val := range vals {
+			if !first {
+				req_url += "&"
+			} else {
+				first = false
+			}
+			req_url += key + "=" + val
 		}
-		req_url += key + "=" + val
 	}
 	return req_url
 }
