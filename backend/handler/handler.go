@@ -11,8 +11,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
+	"github.com/halmk/cliplist-ttv/backend/entity"
+	"github.com/halmk/cliplist-ttv/backend/service/playlist"
+	"github.com/halmk/cliplist-ttv/backend/service/playlistclip"
 	"github.com/halmk/cliplist-ttv/backend/service/socialaccount"
 	"github.com/halmk/cliplist-ttv/backend/service/socialtoken"
+	"github.com/halmk/cliplist-ttv/backend/service/streamer"
 	"github.com/halmk/cliplist-ttv/backend/service/user"
 	"github.com/halmk/cliplist-ttv/backend/utils/twitch"
 	_ "github.com/heroku/x/hmetrics/onload"
@@ -225,3 +229,27 @@ func Logout(c *gin.Context) {
 	log.Printf("User[%s] logged out", username)
 	c.String(http.StatusOK, "logged out")
 }
+
+func GetPlaylists(c *gin.Context) {
+	// Analyse params
+	streamer := c.Query("streamer")
+	log.Println(streamer)
+
+	playlists, err := playlist.GetAll()
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed getting playlists")
+		return
+	}
+	var playlist_clips []entity.PlaylistClip
+	for _, playlist := range playlists {
+		clips, err := playlistclip.GetArrayByPlaylist(playlist.ID)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed getting playlist clips")
+			return
+		}
+		playlist_clips = append(playlist_clips, clips...)
+	}
+
+	c.JSON(http.StatusOK, playlist_clips)
+}
+
