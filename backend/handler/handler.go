@@ -253,3 +253,44 @@ func GetPlaylists(c *gin.Context) {
 	c.JSON(http.StatusOK, playlist_clips)
 }
 
+type PlaylistParams struct {
+	Streamer string   `json:"streamer"`
+	Creator  string   `json:"creator"`
+	Title    string   `json:"title"`
+	Clips    []string `json:"clips"`
+}
+
+func PostPlaylists(c *gin.Context) {
+	var pp PlaylistParams
+	if err := c.BindJSON(&pp); err != nil {
+		c.String(http.StatusBadRequest, "Failed binding request parameters")
+		return
+	}
+	log.Println(pp)
+	streamer, err := streamer.GetByName(pp.Streamer)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Failed getting streamer")
+		return
+	}
+	creator, err := user.GetByUsername(pp.Creator)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Failed getting creator")
+		return
+	}
+
+	playlist, err := playlist.Create(pp.Title, streamer, creator)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed creating playlist")
+		return
+	}
+
+	for _, clip_id := range pp.Clips {
+		_, err := playlistclip.Create(clip_id, playlist)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed creating playlist clip")
+			return
+		}
+	}
+
+	c.String(http.StatusOK, "successful post a playlist")
+}
