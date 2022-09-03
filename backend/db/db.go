@@ -40,4 +40,7 @@ func autoMigration() {
 	db.AutoMigrate(&entity.Provider{})
 	db.AutoMigrate(&entity.Socialaccount{})
 	db.AutoMigrate(&entity.Socialtoken{})
+	db.AutoMigrate(&entity.Playlist{})
+	db.AutoMigrate(&entity.PlaylistClip{})
+	db.AutoMigrate(&entity.Streamer{})
 }
