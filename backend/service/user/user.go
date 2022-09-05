@@ -22,6 +22,16 @@ func Create(username, email string) (entity.User, error) {
 	return u, nil
 }
 
+func GetByID(id int) (entity.User, error) {
+	db := db.GetDB()
+	var u entity.User
+	if err := db.Where("id = ?", id).First(&u).Error; err != nil {
+		return u, err
+	}
+
+	return u, nil
+}
+
 func GetByEmail(email string) (entity.User, error) {
 	db := db.GetDB()
 	var u entity.User

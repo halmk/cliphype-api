@@ -11,7 +11,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
-	"github.com/halmk/cliplist-ttv/backend/entity"
 	"github.com/halmk/cliplist-ttv/backend/service/playlist"
 	"github.com/halmk/cliplist-ttv/backend/service/playlistclip"
 	"github.com/halmk/cliplist-ttv/backend/service/socialaccount"
@@ -230,34 +229,96 @@ func Logout(c *gin.Context) {
 	c.String(http.StatusOK, "logged out")
 }
 
+type PlaylistResponse struct {
+	Playlist Playlist `json:"playlist"`
+	Clips    []Clip   `json:"clips"`
+}
+
+type Playlist struct {
+	ID        uint      `json:"id"`
+	Title     string    `json:"title"`
+	Streamer  string    `json:"streamer"`
+	Creator   string    `json:"creator"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type Clip struct {
+	ID           string  `json:"id"`
+	Duration     float64 `json:"duration"`
+	EmbedURL     string  `json:"embed_url"`
+	ThumbnailURL string  `json:"thumbnail_url"`
+	Title        string  `json:"title"`
+	URL          string  `json:"url"`
+	VideoID      string  `json:"video_id"`
+	VodOffset    int     `json:"vod_offset"`
+}
+
 func GetPlaylists(c *gin.Context) {
 	// Analyse params
-	streamer := c.Query("streamer")
-	log.Println(streamer)
+	streamer_name := c.Query("streamer")
+	log.Println(streamer_name)
 
-	playlists, err := playlist.GetAll()
+	streamer, _ := streamer.GetByName(streamer_name)
+	playlists, err := playlist.GetByStreamerID(streamer.ID)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed getting playlists")
 		return
 	}
-	var playlist_clips []entity.PlaylistClip
+
+	var pr []PlaylistResponse
 	for _, playlist := range playlists {
 		clips, err := playlistclip.GetArrayByPlaylist(playlist.ID)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Failed getting playlist clips")
 			return
 		}
-		playlist_clips = append(playlist_clips, clips...)
+		creator, _ := user.GetByID(playlist.CreatorID)
+		var cs []Clip
+		for _, clip := range clips {
+			c := Clip{
+				ID:           clip.ClipID,
+				Duration:     clip.Duration,
+				EmbedURL:     clip.EmbedURL,
+				ThumbnailURL: clip.ThumbnailURL,
+				Title:        clip.Title,
+				URL:          clip.URL,
+				VideoID:      clip.VideoID,
+				VodOffset:    clip.VodOffset,
+			}
+			cs = append(cs, c)
+		}
+		p := PlaylistResponse{
+			Playlist: Playlist{
+				ID:        playlist.ID,
+				Title:     playlist.Title,
+				Streamer:  streamer_name,
+				Creator:   creator.Name,
+				CreatedAt: playlist.CreatedAt,
+			},
+			Clips: cs,
+		}
+		pr = append(pr, p)
 	}
 
-	c.JSON(http.StatusOK, playlist_clips)
+	c.JSON(http.StatusOK, pr)
 }
 
 type PlaylistParams struct {
-	Streamer string   `json:"streamer"`
-	Creator  string   `json:"creator"`
-	Title    string   `json:"title"`
-	Clips    []string `json:"clips"`
+	Streamer string       `json:"streamer"`
+	Creator  string       `json:"creator"`
+	Title    string       `json:"title"`
+	Clips    []ClipParams `json:"clips"`
+}
+
+type ClipParams struct {
+	ID           string  `json:"id"`
+	Duration     float64 `json:"duration"`
+	EmbedURL     string  `json:"embed_url"`
+	ThumbnailURL string  `json:"thumbnail_url"`
+	Title        string  `json:"title"`
+	URL          string  `json:"url"`
+	VideoID      string  `json:"video_id"`
+	VodOffset    int     `json:"vod_offset"`
 }
 
 func PostPlaylists(c *gin.Context) {
@@ -284,8 +345,8 @@ func PostPlaylists(c *gin.Context) {
 		return
 	}
 
-	for _, clip_id := range pp.Clips {
-		_, err := playlistclip.Create(clip_id, playlist)
+	for _, clip := range pp.Clips {
+		_, err := playlistclip.Create(clip.ID, clip.Duration, clip.EmbedURL, clip.ThumbnailURL, clip.Title, clip.URL, clip.VideoID, clip.VodOffset, playlist)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Failed creating playlist clip")
 			return
