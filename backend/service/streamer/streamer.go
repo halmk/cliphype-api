@@ -30,3 +30,13 @@ func GetByName(name string) (entity.Streamer, error) {
 
 	return streamer, nil
 }
+
+func GetByID(id int) (entity.Streamer, error) {
+	db := db.GetDB()
+	var streamer entity.Streamer
+	if err := db.Where("id = ?", id).First(&streamer).Error; err != nil {
+		return streamer, err
+	}
+
+	return streamer, nil
+}
