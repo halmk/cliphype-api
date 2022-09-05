@@ -5,11 +5,18 @@ import (
 	"github.com/halmk/cliplist-ttv/backend/entity"
 )
 
-func Create(clip_id string, playlist entity.Playlist) (entity.PlaylistClip, error) {
+func Create(clip_id string, duration float64, embed_url string, thumbnail_url string, title string, url string, video_id string, vod_offset int, playlist entity.Playlist) (entity.PlaylistClip, error) {
 	db := db.GetDB()
 	var playlist_clip entity.PlaylistClip
 	{
 		playlist_clip.ClipID = clip_id
+		playlist_clip.Duration = duration
+		playlist_clip.EmbedURL = embed_url
+		playlist_clip.ThumbnailURL = thumbnail_url
+		playlist_clip.Title = title
+		playlist_clip.URL = url
+		playlist_clip.VideoID = video_id
+		playlist_clip.VodOffset = vod_offset
 		playlist_clip.Playlist = playlist
 	}
 	if err := db.Create(&playlist_clip).Error; err != nil {
