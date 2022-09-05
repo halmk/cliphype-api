@@ -29,11 +29,11 @@ func GetAll() ([]entity.Playlist, error) {
 	return playlists, nil
 }
 
-func GetByStreamerID(streamer_id uint) (entity.Playlist, error) {
+func GetByStreamerID(streamer_id uint) ([]entity.Playlist, error) {
 	db := db.GetDB()
-	var playlist entity.Playlist
-	if err := db.Where("streamer_id = ?", streamer_id).First(&playlist).Error; err != nil {
-		return playlist, err
+	var playlists []entity.Playlist
+	if err := db.Where("streamer_id = ?", streamer_id).Find(&playlists).Error; err != nil {
+		return playlists, err
 	}
-	return playlist, nil
+	return playlists, nil
 }
