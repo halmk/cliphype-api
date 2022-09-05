@@ -254,10 +254,21 @@ func GetPlaylists(c *gin.Context) {
 }
 
 type PlaylistParams struct {
-	Streamer string   `json:"streamer"`
-	Creator  string   `json:"creator"`
-	Title    string   `json:"title"`
-	Clips    []string `json:"clips"`
+	Streamer string       `json:"streamer"`
+	Creator  string       `json:"creator"`
+	Title    string       `json:"title"`
+	Clips    []ClipParams `json:"clips"`
+}
+
+type ClipParams struct {
+	ID           string  `json:"id"`
+	Duration     float64 `json:"duration"`
+	EmbedURL     string  `json:"embed_url"`
+	ThumbnailURL string  `json:"thumbnail_url"`
+	Title        string  `json:"title"`
+	URL          string  `json:"url"`
+	VideoID      string  `json:"video_id"`
+	VodOffset    int     `json:"vod_offset"`
 }
 
 func PostPlaylists(c *gin.Context) {
@@ -284,8 +295,8 @@ func PostPlaylists(c *gin.Context) {
 		return
 	}
 
-	for _, clip_id := range pp.Clips {
-		_, err := playlistclip.Create(clip_id, playlist)
+	for _, clip := range pp.Clips {
+		_, err := playlistclip.Create(clip.ID, clip.Duration, clip.EmbedURL, clip.ThumbnailURL, clip.Title, clip.URL, clip.VideoID, clip.VodOffset, playlist)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Failed creating playlist clip")
 			return
