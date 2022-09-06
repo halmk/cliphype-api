@@ -256,7 +256,6 @@ type Clip struct {
 func GetPlaylists(c *gin.Context) {
 	// Analyse params
 	streamer_name := c.Query("streamer")
-	log.Println(streamer_name)
 
 	streamer, _ := streamer.GetByName(streamer_name)
 	playlists, err := playlist.GetByStreamerID(streamer.ID)
@@ -327,7 +326,6 @@ func PostPlaylists(c *gin.Context) {
 		c.String(http.StatusBadRequest, "Failed binding request parameters")
 		return
 	}
-	log.Println(pp)
 	streamer, err := streamer.GetByName(pp.Streamer)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Failed getting streamer")
