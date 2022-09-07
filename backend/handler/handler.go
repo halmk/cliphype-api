@@ -305,6 +305,10 @@ func CreatePlaylistForLatestVideo(c *gin.Context, streamer entity.Streamer, stre
 	video_body, _ := twitch.GetVideos(user_entity["id"].(string), &first)
 	video := video_body["data"].([]interface{})[0].(map[string]interface{})
 	video_id := video["id"].(string)
+	video_thumbnail := video["thumbnail_url"].(string)
+	if !strings.Contains(video_thumbnail, "thumb") {
+		return
+	}
 	if p, err := playlist.GetByVideoID(video_id); len(p) == 0 && err == nil {
 		log.Println("Generate new playlist for the latest video")
 		started_at, ended_at := GetVideoRange(video["created_at"].(string), video["duration"].(string))
