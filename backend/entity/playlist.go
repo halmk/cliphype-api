@@ -11,4 +11,5 @@ type Playlist struct {
 	Streamer   Streamer
 	CreatorID  int
 	Creator    User
+	VideoID    string
 }
