@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -138,6 +139,33 @@ func (twitch *TwitchAppClient) GetRequest(url string) (map[string]interface{}, i
 		json.Unmarshal(byteArray, &mapBody)
 		return mapBody, resp.StatusCode
 	}
+}
+
+func (twitch *TwitchAppClient) GetUser(login string) (map[string]interface{}, int) {
+	req_url := fmt.Sprintf("https://api.twitch.tv/helix/users?login=%s", login)
+	return twitch.GetRequest(req_url)
+}
+
+func (twitch *TwitchAppClient) GetVideos(user_id string, first *int) (map[string]interface{}, int) {
+	req_url := fmt.Sprintf("https://api.twitch.tv/helix/videos?user_id=%s", user_id)
+	if first != nil {
+		req_url += "&first=" + strconv.Itoa(*first)
+	}
+	return twitch.GetRequest(req_url)
+}
+
+func (twitch *TwitchAppClient) GetClips(broadcaster_id string, first *int, started_at *string, ended_at *string) (map[string]interface{}, int) {
+	req_url := fmt.Sprintf("https://api.twitch.tv/helix/clips?broadcaster_id=%s", broadcaster_id)
+	if first != nil {
+		req_url += "&first=" + strconv.Itoa(*first)
+	}
+	if started_at != nil {
+		req_url += "&started_at=" + *started_at
+	}
+	if ended_at != nil {
+		req_url += "&ended_at=" + *ended_at
+	}
+	return twitch.GetRequest(req_url)
 }
 
 func (twitch *TwitchAppClient) ReadTokenFile() error {

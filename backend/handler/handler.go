@@ -6,11 +6,14 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
+	"github.com/halmk/cliplist-ttv/backend/entity"
 	"github.com/halmk/cliplist-ttv/backend/service/playlist"
 	"github.com/halmk/cliplist-ttv/backend/service/playlistclip"
 	"github.com/halmk/cliplist-ttv/backend/service/socialaccount"
@@ -253,11 +256,88 @@ type Clip struct {
 	VodOffset    int     `json:"vod_offset"`
 }
 
+func GetVideoRange(created_at string, duration string) (string, string) {
+	started_at := ""
+	ended_at := ""
+
+	split_duration := strings.Split(duration, "h")
+	hours := 0
+	minutes := 0
+	seconds := 0
+	if len(split_duration) == 2 {
+		hours, _ = strconv.Atoi(split_duration[0])
+	}
+	duration = split_duration[len(split_duration)-1]
+	split_duration = strings.Split(duration, "m")
+	if len(split_duration) == 2 {
+		minutes, _ = strconv.Atoi(split_duration[0])
+	}
+	duration = split_duration[len(split_duration)-1]
+	split_duration = strings.Split(duration, "s")
+	if len(split_duration) == 2 {
+		seconds, _ = strconv.Atoi(split_duration[0])
+	}
+	time_hours := time.Duration(hours) * time.Hour
+	time_minutes := time.Duration(minutes) * time.Minute
+	time_seconds := time.Duration(seconds) * time.Second
+
+	st, _ := time.Parse(time.RFC3339, created_at)
+	et := st.Add(time_hours + time_minutes + time_seconds)
+
+	started_at = st.Format(time.RFC3339)
+	ended_at = et.Format(time.RFC3339)
+
+	return started_at, ended_at
+}
+
+func SortClips(clips []map[string]interface{}) []map[string]interface{} {
+	sort.Slice(clips, func(i, j int) bool {
+		return clips[i]["created_at"].(string) < clips[j]["created_at"].(string)
+	})
+	return clips
+}
+
+func CreatePlaylistForLatestVideo(c *gin.Context, streamer entity.Streamer, streamer_name string) {
+	twitch := twitch.NewTwitchAppClient()
+	user_body, _ := twitch.GetUser(streamer_name)
+	user_entity := user_body["data"].([]interface{})[0].(map[string]interface{})
+	first := 1
+	video_body, _ := twitch.GetVideos(user_entity["id"].(string), &first)
+	video := video_body["data"].([]interface{})[0].(map[string]interface{})
+	video_id := video["id"].(string)
+	if p, err := playlist.GetByVideoID(video_id); len(p) == 0 && err == nil {
+		log.Println("Generate new playlist for the latest video")
+		started_at, ended_at := GetVideoRange(video["created_at"].(string), video["duration"].(string))
+		first = 10
+		clips_body, _ := twitch.GetClips(user_entity["id"].(string), &first, &started_at, &ended_at)
+		clips := clips_body["data"].([]interface{})
+		var clips_map []map[string]interface{}
+		for _, clip := range clips {
+			clips_map = append(clips_map, clip.(map[string]interface{}))
+		}
+		sorted_clips := SortClips(clips_map)
+		title := fmt.Sprintf("Most viewed clips for the latest video - %s", video_id)
+		if len(sorted_clips) > 1 {
+			playlist_entity, _ := playlist.Create(title, streamer, nil, &video_id)
+			for _, clip := range sorted_clips {
+				_, err := playlistclip.Create(clip["id"].(string), clip["duration"].(float64), clip["embed_url"].(string), clip["thumbnail_url"].(string), clip["title"].(string), clip["url"].(string), clip["video_id"].(string), int(clip["vod_offset"].(float64)), playlist_entity)
+				if err != nil {
+					c.String(http.StatusInternalServerError, "Failed creating playlists")
+					return
+				}
+			}
+		}
+	}
+}
+
 func GetPlaylists(c *gin.Context) {
 	// Analyse params
 	streamer_name := c.Query("streamer")
-
 	streamer, _ := streamer.GetByName(streamer_name)
+
+	// Generate a playlist for the latest video
+	CreatePlaylistForLatestVideo(c, streamer, streamer_name)
+
 	playlists, err := playlist.GetByStreamerID(streamer.ID)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed getting playlists")
@@ -337,7 +417,7 @@ func PostPlaylists(c *gin.Context) {
 		return
 	}
 
-	playlist, err := playlist.Create(pp.Title, streamer, creator)
+	playlist, err := playlist.Create(pp.Title, streamer, &creator, nil)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed creating playlist")
 		return
