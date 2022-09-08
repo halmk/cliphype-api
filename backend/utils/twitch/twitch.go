@@ -32,12 +32,12 @@ type TwitchAppClient struct {
 }
 
 type TwitchUserClient struct {
-	username      string
-	client_id     string
-	client_secret string
-	access_token  string
-	refresh_token string
-	count         int
+	Username     string
+	ClientID     string
+	ClientSecret string
+	AccessToken  string
+	RefreshToken string
+	Count        int
 }
 
 func NewTwitchAppClient() TwitchAppClient {
@@ -186,14 +186,14 @@ func (twitch *TwitchAppClient) WriteTokenFile() error {
 	return nil
 }
 
-func (twitch *TwitchUserClient) RefreshToken() error {
+func (twitch *TwitchUserClient) RefreshAccessToken() error {
 	req_url := "https://id.twitch.tv/oauth2/token"
 
 	values := url.Values{}
 	values.Set("grant_type", "refresh_token")
-	values.Add("refresh_token", twitch.refresh_token)
-	values.Add("client_id", twitch.client_id)
-	values.Add("client_secret", twitch.client_secret)
+	values.Add("refresh_token", twitch.RefreshToken)
+	values.Add("client_id", twitch.ClientID)
+	values.Add("client_secret", twitch.ClientSecret)
 
 	req, err := http.NewRequest(
 		"POST",
@@ -228,10 +228,10 @@ func (twitch *TwitchUserClient) RefreshToken() error {
 }
 
 func (twitch *TwitchUserClient) UpdateSocialToken(access_token, refresh_token string) error {
-	twitch.access_token = access_token
-	twitch.refresh_token = refresh_token
+	twitch.AccessToken = access_token
+	twitch.RefreshToken = refresh_token
 
-	user, err := user.GetByUsername(twitch.username)
+	user, err := user.GetByUsername(twitch.Username)
 	if err != nil {
 		return err
 	}
@@ -255,8 +255,8 @@ func (tc *TwitchUserClient) GetRequest(url string) (map[string]interface{}, int)
 		url,
 		nil,
 	)
-	req.Header.Add("Authorization", "Bearer "+tc.access_token)
-	req.Header.Add("Client-ID", tc.client_id)
+	req.Header.Add("Authorization", "Bearer "+tc.AccessToken)
+	req.Header.Add("Client-ID", tc.ClientID)
 
 	client := new(http.Client)
 	resp, err := client.Do(req)
@@ -266,15 +266,15 @@ func (tc *TwitchUserClient) GetRequest(url string) (map[string]interface{}, int)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		tc.count++
-		if tc.count <= 1 {
+		tc.Count++
+		if tc.Count <= 1 {
 			if resp.StatusCode == 401 {
-				err := tc.RefreshToken()
+				err := tc.RefreshAccessToken()
 				if err != nil {
 					log.Println(err)
 					return nil, resp.StatusCode
 				}
-				log.Printf("User[%s]'s token refreshed\n", tc.username)
+				log.Printf("User[%s]'s token refreshed\n", tc.Username)
 				return tc.GetRequest(url)
 			} else {
 				return tc.GetRequest(url)
@@ -295,7 +295,7 @@ func AuthConfig() *oauth2.Config {
 	conf := &oauth2.Config{
 		ClientID:     os.Getenv("TWITCH_CLIENT_ID"),
 		ClientSecret: os.Getenv("TWITCH_CLIENT_SECRET"),
-		Scopes:       []string{"user:read:email"},
+		Scopes:       []string{"user:read:email", "chat:read", "moderator:read:chat_settings", "clips:edit"},
 		RedirectURL:  os.Getenv("APP_BASE_URL") + "/account/twitch/login/callback/",
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  "https://id.twitch.tv/oauth2/authorize",

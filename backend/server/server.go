@@ -51,6 +51,9 @@ func SetupRouter() *gin.Engine {
 		// clip playlists API Request
 		api.GET("/playlists", handler.GetPlaylists)
 		api.POST("/playlists", handler.PostPlaylists)
+
+		// Get chatbot infomation
+		api.GET("/chatbot", handler.GetChatbot)
 	}
 
 	// Accounts

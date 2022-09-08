@@ -28,11 +28,14 @@ func CheckEnvs() {
 		"PORT",
 		"TWITCH_CLIENT_ID",
 		"TWITCH_CLIENT_SECRET",
+		"CHATBOT",
 		"APP_ORIGIN",
 		"API_DOMAIN",
 		"APP_BASE_URL",
 		"LOGIN_REDIRECT_URL",
 		"LOGOUT_REDIRECT_URL",
+		"SESSION_SECRET",
+		"JWT_SECRET",
 		"DATABASE_URL",
 	}
 
@@ -44,6 +47,6 @@ func CheckEnvs() {
 func CheckEnv(env string) {
 	val := os.Getenv(env)
 	if val == "" {
-		log.Fatal(fmt.Sprintf("$%s must be set", strings.ToUpper(env)))
+		log.Fatalf(fmt.Sprintf("$%s must be set", strings.ToUpper(env)))
 	}
 }

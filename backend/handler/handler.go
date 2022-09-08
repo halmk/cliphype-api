@@ -437,3 +437,35 @@ func PostPlaylists(c *gin.Context) {
 
 	c.String(http.StatusOK, "successful post a playlist")
 }
+
+func GetChatbot(c *gin.Context) {
+	chatbot_name := os.Getenv("CHATBOT")
+	chatbot_user, err := user.GetByUsername(chatbot_name)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "chatbot doesn't exist")
+		return
+	}
+	chatbot_socialaccount, err := socialaccount.GetByUserId(chatbot_user.ID)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "chatbot doesn't exist")
+		return
+	}
+	chatbot_socialtoken, err := socialtoken.GetBySocialaccountId(chatbot_socialaccount.ID)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "chatbot doesn't exist")
+		return
+	}
+
+	twitch_client := twitch.NewTwitchUserClient("", chatbot_socialtoken.AccessToken, chatbot_socialtoken.RefreshToken)
+	_, status_code := twitch_client.GetRequest("https://api.twitch.tv/helix/users")
+	if status_code != 200 {
+		c.String(http.StatusInternalServerError, "twitch request failed")
+		return
+	}
+
+	access_token := twitch_client.AccessToken
+	c.JSON(http.StatusOK, gin.H{
+		"username": chatbot_name,
+		"password": access_token,
+	})
+}
