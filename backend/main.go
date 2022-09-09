@@ -28,7 +28,6 @@ func CheckEnvs() {
 		"PORT",
 		"TWITCH_CLIENT_ID",
 		"TWITCH_CLIENT_SECRET",
-		"CHATBOT",
 		"APP_ORIGIN",
 		"API_DOMAIN",
 		"APP_BASE_URL",
