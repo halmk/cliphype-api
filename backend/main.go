@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/halmk/cliplist-ttv/backend/db"
+	"github.com/halmk/cliplist-ttv/backend/estimator"
 	"github.com/halmk/cliplist-ttv/backend/server"
 	_ "github.com/heroku/x/hmetrics/onload"
 	_ "github.com/lib/pq"
@@ -17,6 +18,8 @@ func main() {
 
 	db.Init()
 	defer db.Close()
+
+	estimator.Init()
 
 	port := os.Getenv("PORT")
 	r := server.SetupRouter()
@@ -36,6 +39,11 @@ func CheckEnvs() {
 		"SESSION_SECRET",
 		"JWT_SECRET",
 		"DATABASE_URL",
+		"AWS_REGION",
+		"AWS_ACCESS_KEY_ID",
+		"AWS_SECRET_ACCESS_KEY",
+		"S3_BUCKET_NAME",
+		"S3_MODEL_KEY",
 	}
 
 	for _, env := range envs {
