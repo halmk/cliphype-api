@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"github.com/halmk/cliplist-ttv/backend/entity"
+	"github.com/halmk/cliplist-ttv/backend/estimator"
 	"github.com/halmk/cliplist-ttv/backend/service/playlist"
 	"github.com/halmk/cliplist-ttv/backend/service/playlistclip"
 	"github.com/halmk/cliplist-ttv/backend/service/socialaccount"
@@ -23,6 +24,7 @@ import (
 	"github.com/halmk/cliplist-ttv/backend/utils/twitch"
 	_ "github.com/heroku/x/hmetrics/onload"
 	_ "github.com/lib/pq"
+	"github.com/sajari/word2vec"
 )
 
 func Ping(c *gin.Context) {
@@ -467,5 +469,47 @@ func GetChatbot(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"username": chatbot_name,
 		"password": access_token,
+	})
+}
+
+func GetHypes(c *gin.Context) {
+	sentence := c.Query("sentence")
+	if len(sentence) == 0 {
+		c.String(http.StatusBadRequest, "sentence param required")
+		return
+	}
+
+	var hypes []map[string]interface{}
+	model := estimator.GetEstimator()
+	hypewords := estimator.GetHypewords()
+
+	expr_message := word2vec.Expr{}
+	expr_message.Add(1, sentence)
+	_, err := expr_message.Eval(model)
+	log.Println(sentence, err)
+
+	for _, hypeword := range *hypewords {
+		hype := make(map[string]interface{})
+		hype["word"] = hypeword
+
+		expr_hypeword := word2vec.Expr{}
+		expr_hypeword.Add(1, hypeword)
+		pair := [2]word2vec.Expr{
+			expr_message,
+			expr_hypeword,
+		}
+		pairs := [][2]word2vec.Expr{pair}
+		value, err := model.Coses(pairs)
+		if err != nil {
+			hype["value"] = 0.0
+		} else {
+			hype["value"] = value
+		}
+		hypes = append(hypes, hype)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"sentence": sentence,
+		"hypes":    hypes,
 	})
 }
