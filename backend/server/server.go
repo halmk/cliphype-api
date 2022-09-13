@@ -52,8 +52,11 @@ func SetupRouter() *gin.Engine {
 		api.GET("/playlists", handler.GetPlaylists)
 		api.POST("/playlists", handler.PostPlaylists)
 
-		// Get chatbot infomation
+		// Response chatbot infomation
 		api.GET("/chatbot", handler.GetChatbot)
+
+		// Response hypes for a chat message
+		api.GET("/hypes", handler.GetHypes)
 	}
 
 	// Accounts
