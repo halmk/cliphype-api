@@ -46,6 +46,7 @@ func SetupRouter() *gin.Engine {
 		{
 			twitch.GET("/app", handler.TwitchAPIAppRequest)
 			twitch.GET("/user", handler.TwitchAPIUserRequest)
+			twitch.POST("/user", handler.TwitchAPIUserRequest)
 		}
 
 		// clip playlists API Request
