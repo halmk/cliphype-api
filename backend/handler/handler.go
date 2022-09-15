@@ -57,10 +57,25 @@ func TwitchAPIUserRequest(c *gin.Context) {
 	}
 	username := claims["username"].(string)
 
-	raw_query := c.Request.URL.RawQuery
-	query, _ := url.QueryUnescape(raw_query)
-	log.Println("Query user requested:", query)
-	req_url := MakeRequestURL(raw_query)
+	var req_url string
+	var data map[string]interface{}
+	if c.Request.Method == "GET" {
+		// Parse request query
+		raw_query := c.Request.URL.RawQuery
+		query, _ := url.QueryUnescape(raw_query)
+		log.Println("Query user requested:", query)
+		req_url = MakeRequestURL(raw_query)
+	} else if c.Request.Method == "POST" {
+		// Parse request data
+		if err := c.BindJSON(&data); err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+		log.Println("Data user requested:", data)
+		req_url = data["url"].(string)
+		delete(data, "url")
+	}
+	log.Println(req_url)
 
 	// Get user's access token
 	user_record, err := user.GetByUsername(username)
@@ -84,9 +99,13 @@ func TwitchAPIUserRequest(c *gin.Context) {
 	access_token := socialtoken_record.AccessToken
 	refresh_token := socialtoken_record.RefreshToken
 
+	// Proxy Twitch API Request
 	twitch := twitch.NewTwitchUserClient(username, access_token, refresh_token)
-	response, status_code := twitch.GetRequest(req_url)
-	c.JSON(status_code, gin.H{"response": response})
+	var response map[string]interface{}
+	var ratelimit_remaining string
+	var status_code int
+	response, ratelimit_remaining, status_code = twitch.Request(c.Request.Method, req_url, &data)
+	c.JSON(status_code, gin.H{"response": response, "ratelimitRemaining": ratelimit_remaining})
 }
 
 func MakeRequestURL(query string) string {
@@ -163,7 +182,7 @@ func TwitchLoginCallback(c *gin.Context) {
 
 	// Get user infomation
 	twitch_client := twitch.NewTwitchUserClient("", tok.AccessToken, tok.RefreshToken)
-	info, status_code := twitch_client.GetRequest("https://api.twitch.tv/helix/users")
+	info, _, status_code := twitch_client.Request("GET", "https://api.twitch.tv/helix/users", nil)
 	if status_code != 200 {
 		c.String(http.StatusInternalServerError, "twitch request failed")
 		return
@@ -459,7 +478,7 @@ func GetChatbot(c *gin.Context) {
 	}
 
 	twitch_client := twitch.NewTwitchUserClient("", chatbot_socialtoken.AccessToken, chatbot_socialtoken.RefreshToken)
-	_, status_code := twitch_client.GetRequest("https://api.twitch.tv/helix/users")
+	_, _, status_code := twitch_client.Request("GET", "https://api.twitch.tv/helix/users", nil)
 	if status_code != 200 {
 		c.String(http.StatusInternalServerError, "twitch request failed")
 		return
