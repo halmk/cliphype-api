@@ -1,6 +1,7 @@
 package twitch
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
@@ -249,9 +250,11 @@ func (twitch *TwitchUserClient) UpdateSocialToken(access_token, refresh_token st
 	return nil
 }
 
-func (tc *TwitchUserClient) GetRequest(url string) (map[string]interface{}, int) {
+func (tc *TwitchUserClient) Request(method string, url string, data *map[string]interface{}) (map[string]interface{}, string, int) {
+	b := new(bytes.Buffer)
+	json.NewEncoder(b).Encode(data)
 	req, _ := http.NewRequest(
-		"GET",
+		method,
 		url,
 		nil,
 	)
@@ -265,29 +268,32 @@ func (tc *TwitchUserClient) GetRequest(url string) (map[string]interface{}, int)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != 200 && resp.StatusCode != 202 {
 		tc.Count++
 		if tc.Count <= 1 {
 			if resp.StatusCode == 401 {
 				err := tc.RefreshAccessToken()
 				if err != nil {
 					log.Println(err)
-					return nil, resp.StatusCode
+					return nil, "", resp.StatusCode
 				}
 				log.Printf("User[%s]'s token refreshed\n", tc.Username)
-				return tc.GetRequest(url)
+				return tc.Request(method, url, data)
 			} else {
-				return tc.GetRequest(url)
+				return tc.Request(method, url, data)
 			}
 		} else {
-			log.Println(resp.Status, req.Header, req.URL)
-			return nil, resp.StatusCode
+			log.Println(resp.Status, req.Header, req.URL, req.Method, req.Body)
+			return nil, "", resp.StatusCode
 		}
 	} else {
 		byteArray, _ := ioutil.ReadAll(resp.Body)
+		headers := resp.Header
+		ratelimit_remaining := headers["Ratelimit-Remaining"][0]
+		log.Println(headers)
 		var mapBody map[string]interface{}
 		json.Unmarshal(byteArray, &mapBody)
-		return mapBody["data"].([]interface{})[0].(map[string]interface{}), resp.StatusCode
+		return mapBody["data"].([]interface{})[0].(map[string]interface{}), ratelimit_remaining, resp.StatusCode
 	}
 }
 
