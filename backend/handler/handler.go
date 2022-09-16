@@ -31,6 +31,30 @@ func Ping(c *gin.Context) {
 	c.String(http.StatusOK, "pong")
 }
 
+func GetUser(c *gin.Context) {
+	bearer_token := c.Request.Header["Authorization"][0]
+	claims, err := parseToken(bearer_token)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	username := claims["username"].(string)
+	user_record, _ := user.GetByUsername(username)
+	name := user_record.Name
+	email := user_record.Email
+	last_login := user_record.LastLogin
+	is_staff := user_record.IsStaff
+	is_superuser := user_record.IsSuperuser
+
+	c.JSON(http.StatusOK, gin.H{
+		"name":        name,
+		"email":       email,
+		"lastLogin":   last_login,
+		"isStaff":     is_staff,
+		"isSuperuser": is_superuser,
+	})
+}
+
 func TwitchAPIAppRequest(c *gin.Context) {
 	raw_query := c.Request.URL.RawQuery
 	query, _ := url.QueryUnescape(raw_query)
@@ -44,15 +68,9 @@ func TwitchAPIAppRequest(c *gin.Context) {
 
 func TwitchAPIUserRequest(c *gin.Context) {
 	bearer_token := c.Request.Header["Authorization"][0]
-	token_string := strings.Split(bearer_token, " ")[1]
-	token, ok := verifyJWT(token_string)
-	if !ok {
-		c.String(http.StatusBadRequest, "invalid token")
-		return
-	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		c.String(http.StatusBadRequest, "invalid token claims")
+	claims, err := parseToken(bearer_token)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 	username := claims["username"].(string)
@@ -105,7 +123,22 @@ func TwitchAPIUserRequest(c *gin.Context) {
 	var ratelimit_remaining string
 	var status_code int
 	response, ratelimit_remaining, status_code = twitch.Request(c.Request.Method, req_url, &data)
+
+	// Save specific response
 	c.JSON(status_code, gin.H{"response": response, "ratelimitRemaining": ratelimit_remaining})
+}
+
+func parseToken(bearer_token string) (jwt.MapClaims, error) {
+	token_string := strings.Split(bearer_token, " ")[1]
+	token, ok := verifyJWT(token_string)
+	if !ok {
+		return nil, fmt.Errorf("invalid token")
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, fmt.Errorf("invalid token claims")
+	}
+	return claims, nil
 }
 
 func MakeRequestURL(query string) string {
