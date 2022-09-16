@@ -43,4 +43,5 @@ func autoMigration() {
 	db.AutoMigrate(&entity.Playlist{})
 	db.AutoMigrate(&entity.PlaylistClip{})
 	db.AutoMigrate(&entity.Streamer{})
+	db.AutoMigrate(&entity.AutoClip{})
 }
