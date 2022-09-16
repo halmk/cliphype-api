@@ -15,6 +15,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/halmk/cliplist-ttv/backend/entity"
 	"github.com/halmk/cliplist-ttv/backend/estimator"
+	"github.com/halmk/cliplist-ttv/backend/service/autoclip"
 	"github.com/halmk/cliplist-ttv/backend/service/playlist"
 	"github.com/halmk/cliplist-ttv/backend/service/playlistclip"
 	"github.com/halmk/cliplist-ttv/backend/service/socialaccount"
@@ -125,6 +126,19 @@ func TwitchAPIUserRequest(c *gin.Context) {
 	response, ratelimit_remaining, status_code = twitch.Request(c.Request.Method, req_url, &data)
 
 	// Save specific response
+	if c.Request.Method == "POST" {
+		if strings.Contains(req_url, "clips") {
+			clip_id := response["id"].(string)
+			edit_url := response["edit_url"].(string)
+			auto_clip, err := autoclip.Create(clip_id, edit_url, user_record)
+			if err != nil {
+				log.Fatalf("%v (%v)", err, auto_clip)
+				c.String(http.StatusInternalServerError, err.Error())
+				return
+			}
+		}
+	}
+
 	c.JSON(status_code, gin.H{"response": response, "ratelimitRemaining": ratelimit_remaining})
 }
 
