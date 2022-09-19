@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/halmk/cliplist-ttv/backend/handler"
+	"github.com/halmk/cliphype-api/handler"
 	_ "github.com/heroku/x/hmetrics/onload"
 	_ "github.com/lib/pq"
 )

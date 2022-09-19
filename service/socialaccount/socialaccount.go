@@ -3,8 +3,8 @@ package socialaccount
 import (
 	"encoding/json"
 
-	"github.com/halmk/cliplist-ttv/backend/db"
-	"github.com/halmk/cliplist-ttv/backend/entity"
+	"github.com/halmk/cliphype-api/db"
+	"github.com/halmk/cliphype-api/entity"
 	"github.com/jinzhu/gorm/dialects/postgres"
 )
 

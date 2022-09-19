@@ -17,11 +17,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/halmk/cliplist-ttv/backend/db"
-	"github.com/halmk/cliplist-ttv/backend/service/provider"
-	"github.com/halmk/cliplist-ttv/backend/service/socialaccount"
-	"github.com/halmk/cliplist-ttv/backend/service/socialtoken"
-	"github.com/halmk/cliplist-ttv/backend/service/user"
+	"github.com/halmk/cliphype-api/db"
+	"github.com/halmk/cliphype-api/service/provider"
+	"github.com/halmk/cliphype-api/service/socialaccount"
+	"github.com/halmk/cliphype-api/service/socialtoken"
+	"github.com/halmk/cliphype-api/service/user"
 	"golang.org/x/oauth2"
 )
 

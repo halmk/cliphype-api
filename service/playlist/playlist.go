@@ -1,8 +1,8 @@
 package playlist
 
 import (
-	"github.com/halmk/cliplist-ttv/backend/db"
-	"github.com/halmk/cliplist-ttv/backend/entity"
+	"github.com/halmk/cliphype-api/db"
+	"github.com/halmk/cliphype-api/entity"
 )
 
 func Create(title string, streamer entity.Streamer, creator *entity.User, video_id *string) (entity.Playlist, error) {

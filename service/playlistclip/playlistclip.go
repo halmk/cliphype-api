@@ -1,8 +1,8 @@
 package playlistclip
 
 import (
-	"github.com/halmk/cliplist-ttv/backend/db"
-	"github.com/halmk/cliplist-ttv/backend/entity"
+	"github.com/halmk/cliphype-api/db"
+	"github.com/halmk/cliphype-api/entity"
 )
 
 func Create(clip_id string, duration float64, embed_url string, thumbnail_url string, title string, url string, video_id string, vod_offset int, playlist entity.Playlist) (entity.PlaylistClip, error) {

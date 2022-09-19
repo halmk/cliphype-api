@@ -1,8 +1,8 @@
 package socialtoken
 
 import (
-	"github.com/halmk/cliplist-ttv/backend/db"
-	"github.com/halmk/cliplist-ttv/backend/entity"
+	"github.com/halmk/cliphype-api/db"
+	"github.com/halmk/cliphype-api/entity"
 	"golang.org/x/oauth2"
 )
 

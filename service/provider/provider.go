@@ -1,8 +1,8 @@
 package provider
 
 import (
-	"github.com/halmk/cliplist-ttv/backend/db"
-	"github.com/halmk/cliplist-ttv/backend/entity"
+	"github.com/halmk/cliphype-api/db"
+	"github.com/halmk/cliphype-api/entity"
 )
 
 func Create(name string) (entity.Provider, error) {

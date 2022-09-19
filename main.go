@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/halmk/cliplist-ttv/backend/db"
-	"github.com/halmk/cliplist-ttv/backend/estimator"
-	"github.com/halmk/cliplist-ttv/backend/server"
+	"github.com/halmk/cliphype-api/db"
+	"github.com/halmk/cliphype-api/estimator"
+	"github.com/halmk/cliphype-api/server"
 	_ "github.com/heroku/x/hmetrics/onload"
 	_ "github.com/lib/pq"
 )

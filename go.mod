@@ -1,4 +1,4 @@
-module github.com/halmk/cliplist-ttv/backend
+module github.com/halmk/cliphype-api
 
 // +heroku goVersion go1.17
 go 1.17

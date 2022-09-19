@@ -1,8 +1,8 @@
 package autoclip
 
 import (
-	"github.com/halmk/cliplist-ttv/backend/db"
-	"github.com/halmk/cliplist-ttv/backend/entity"
+	"github.com/halmk/cliphype-api/db"
+	"github.com/halmk/cliphype-api/entity"
 )
 
 func Create(clip_id string, edit_url string, user entity.User) (entity.AutoClip, error) {

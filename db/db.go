@@ -3,7 +3,7 @@ package db
 import (
 	"os"
 
-	"github.com/halmk/cliplist-ttv/backend/entity"
+	"github.com/halmk/cliphype-api/entity"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Use PostgreSQL in gorm
 )
