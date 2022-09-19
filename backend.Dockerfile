@@ -1,4 +1,4 @@
-FROM node:alpine
+FROM golang:alpine3.16
 
 RUN apk update
 
