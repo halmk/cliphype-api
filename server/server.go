@@ -61,6 +61,9 @@ func SetupRouter() *gin.Engine {
 
 		// Response hypes for a chat message
 		api.GET("/hypes", handler.GetHypes)
+
+		// Response autoclips
+		api.GET("/autoclips", handler.GetAutoClips)
 	}
 
 	// Accounts
