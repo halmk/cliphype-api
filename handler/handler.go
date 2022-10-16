@@ -78,6 +78,8 @@ func TwitchAPIUserRequest(c *gin.Context) {
 
 	var req_url string
 	var data map[string]interface{}
+	var twitch_data map[string]interface{}
+	var cliphype_data map[string]interface{}
 	if c.Request.Method == "GET" {
 		// Parse request query
 		raw_query := c.Request.URL.RawQuery
@@ -92,9 +94,11 @@ func TwitchAPIUserRequest(c *gin.Context) {
 		}
 		log.Println("Data user requested:", data)
 		req_url = data["url"].(string)
+		twitch_data = data["twitch"].(map[string]interface{})
+		cliphype_data = data["cliphype"].(map[string]interface{})
 		delete(data, "url")
 	}
-	log.Println(req_url)
+	log.Println(req_url, twitch_data, cliphype_data)
 
 	// Get user's access token
 	user_record, err := user.GetByUsername(username)
@@ -123,14 +127,16 @@ func TwitchAPIUserRequest(c *gin.Context) {
 	var response map[string]interface{}
 	var ratelimit_remaining string
 	var status_code int
-	response, ratelimit_remaining, status_code = twitch.Request(c.Request.Method, req_url, &data)
+	response, ratelimit_remaining, status_code = twitch.Request(c.Request.Method, req_url, &twitch_data)
 
 	// Save specific response
 	if c.Request.Method == "POST" {
 		if strings.Contains(req_url, "clips") {
 			clip_id := response["id"].(string)
 			edit_url := response["edit_url"].(string)
-			auto_clip, err := autoclip.Create(clip_id, edit_url, user_record)
+			streamer := cliphype_data["streamer"].(string)
+			hype := cliphype_data["hype"].(float64)
+			auto_clip, err := autoclip.Create(clip_id, edit_url, user_record, streamer, hype)
 			if err != nil {
 				log.Fatalf("%v (%v)", err, auto_clip)
 				c.String(http.StatusInternalServerError, err.Error())
@@ -577,5 +583,50 @@ func GetHypes(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"sentence": sentence,
 		"hypes":    hypes,
+	})
+}
+
+func GetAutoClips(c *gin.Context) {
+	bearer_token := c.Request.Header["Authorization"][0]
+	claims, err := parseToken(bearer_token)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	username := claims["username"].(string)
+	user, _ := user.GetByUsername(username)
+	user_id := user.ID
+
+	streamer := c.Query("streamer")
+	if len(streamer) == 0 {
+		c.String(http.StatusBadRequest, "streamer param required")
+		return
+	}
+
+	autoclips, err := autoclip.GetArrayBy(&user_id, &streamer)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "failed to get autoclips")
+		return
+	}
+	type AutoClipResponse struct {
+		ClipID   string  `json:"clipID"`
+		EditURL  string  `json:"editURL"`
+		Streamer string  `json:"streamer"`
+		Hype     float64 `json:"hype"`
+	}
+	var autoclips_res []AutoClipResponse
+	for _, autoclip := range autoclips {
+		res := AutoClipResponse{
+			ClipID:   autoclip.ClipID,
+			EditURL:  autoclip.EditURL,
+			Streamer: autoclip.Streamer,
+			Hype:     autoclip.Hype,
+		}
+		autoclips_res = append(autoclips_res, res)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"streamer":  streamer,
+		"autoclips": autoclips_res,
 	})
 }
