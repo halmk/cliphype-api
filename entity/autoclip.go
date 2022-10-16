@@ -6,8 +6,10 @@ import (
 
 type AutoClip struct {
 	gorm.Model
-	UserID  int
-	User    User
-	ClipID  string
-	EditURL string
+	UserID   int
+	User     User
+	Streamer string
+	ClipID   string
+	EditURL  string
+	Hype     float64
 }
