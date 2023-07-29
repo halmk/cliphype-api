@@ -1,0 +1,9 @@
+FROM golang:alpine3.16
+
+RUN apk add git
+
+WORKDIR /api
+ADD ./go.mod /api/go.mod
+RUN go mod tidy
+
+CMD ["go", "run", "main.go"]

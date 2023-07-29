@@ -1,16 +1,18 @@
 version: '3.8'
 
 services:
-  app:
+  api:
     build:
       context: .
-      dockerfile: backend.Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "5000:5000"
-    working_dir: "/cliphype-api"
+    working_dir: "/api"
     volumes:
-      - "./:/cliphype-api"
+      - "./:/api"
     tty: true
+    env_file:
+      - './.env'
     environment:
       - HOST=0.0.0.0
       - CHOKIDAR_USEPOLLING=true
