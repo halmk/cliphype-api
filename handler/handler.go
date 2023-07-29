@@ -128,6 +128,7 @@ func TwitchAPIUserRequest(c *gin.Context) {
 	var ratelimit_remaining string
 	var status_code int
 	response, ratelimit_remaining, status_code = twitch.Request(c.Request.Method, req_url, &twitch_data)
+	log.Println("ratelimit_remaining: ", ratelimit_remaining, "\tstatus_code: ", status_code)
 
 	// Save specific response
 	if c.Request.Method == "POST" {
@@ -587,27 +588,66 @@ func GetHypes(c *gin.Context) {
 }
 
 func GetAutoClips(c *gin.Context) {
-	bearer_token := c.Request.Header["Authorization"][0]
-	claims, err := parseToken(bearer_token)
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
-	}
-	username := claims["username"].(string)
-	user, _ := user.GetByUsername(username)
-	user_id := user.ID
+	var user_id *uint
+	var streamer *string
+	var started_at *string
+	var ended_at *string
 
-	streamer := c.Query("streamer")
-	if len(streamer) == 0 {
-		c.String(http.StatusBadRequest, "streamer param required")
-		return
+	bearer_tokens, ok := c.Request.Header["Authorization"]
+	if ok && len(bearer_tokens) > 0 {
+		bearer_token := bearer_tokens[0]
+		claims, err := parseToken(bearer_token)
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+
+		username := claims["username"].(string)
+		user, _ := user.GetByUsername(username)
+		user_id = &user.ID
 	}
 
-	autoclips, err := autoclip.GetArrayBy(&user_id, &streamer)
+	streamer_param := c.Query("streamer")
+	if len(streamer_param) > 0 {
+		streamer = &streamer_param
+	}
+	started_at_param := c.Query("started_at")
+	if len(started_at_param) > 0 {
+		started_at = &started_at_param
+	}
+	ended_at_param := c.Query("ended_at")
+	if len(ended_at_param) > 0 {
+		ended_at = &ended_at_param
+	}
+
+	var query string
+	var args []interface{}
+
+	if user_id != nil {
+		query += "user_id = ? "
+		args = append(args, *user_id)
+	}
+	if streamer != nil {
+		if len(query) > 0 {
+			query += "AND "
+		}
+		query += "streamer = ? "
+		args = append(args, *streamer)
+	}
+	if started_at != nil && ended_at != nil {
+		if len(query) > 0 {
+			query += "AND "
+		}
+		query += "created_at BETWEEN ? AND ?"
+		args = append(args, *started_at, *ended_at)
+	}
+	log.Println(query, args)
+	autoclips, err := autoclip.GetArrayWhere(query, args...)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "failed to get autoclips")
 		return
 	}
+
 	type AutoClipResponse struct {
 		ClipID   string  `json:"clipID"`
 		EditURL  string  `json:"editURL"`
