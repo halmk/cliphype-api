@@ -1,6 +1,8 @@
 package autoclip
 
 import (
+	"log"
+
 	"github.com/halmk/cliphype-api/db"
 	"github.com/halmk/cliphype-api/entity"
 )
@@ -42,6 +44,16 @@ func GetArrayBy(user_id *uint, streamer *string) ([]entity.AutoClip, error) {
 		cond["streamer"] = *streamer
 	}
 	if err := db.Where(cond).Find(&auto_clips).Error; err != nil {
+		return auto_clips, err
+	}
+	return auto_clips, nil
+}
+
+func GetArrayWhere(query interface{}, args ...interface{}) ([]entity.AutoClip, error) {
+	db := db.GetDB()
+	var auto_clips []entity.AutoClip
+	if err := db.Where(query, args...).Find(&auto_clips).Error; err != nil {
+		log.Println(err)
 		return auto_clips, err
 	}
 	return auto_clips, nil
